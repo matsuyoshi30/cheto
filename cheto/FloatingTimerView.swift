@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FloatingTimerView: View {
     @ObservedObject var timerManager: TimerManager
+    var startAction: () -> Void = {}
 
     @State private var highlightColor: Color?
 
@@ -36,7 +37,7 @@ struct FloatingTimerView: View {
             // Control buttons
             HStack(spacing: 12) {
                 if timerManager.currentPhase == .idle {
-                    Button(action: { timerManager.start() }) {
+                    Button(action: startAction) {
                         Image(systemName: "play.fill")
                     }
                 } else {

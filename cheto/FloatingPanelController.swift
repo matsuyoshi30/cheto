@@ -8,12 +8,14 @@ class FloatingPanelController: ObservableObject {
 
     private var panel: FloatingPanel?
     private var timerManager: TimerManager?
+    private var startAction: () -> Void = {}
 
     init() {
         isVisible = UserDefaults.standard.bool(forKey: "floatingWindowVisible")
     }
 
-    func setup(timerManager: TimerManager) {
+    func setup(timerManager: TimerManager, startAction: @escaping @MainActor () -> Void = {}) {
+        self.startAction = startAction
         self.timerManager = timerManager
         if isVisible {
             show()
@@ -44,7 +46,7 @@ class FloatingPanelController: ObservableObject {
             panel = FloatingPanel(contentRect: frame)
 
             let hostingView = NSHostingView(
-                rootView: FloatingTimerView(timerManager: timerManager)
+                rootView: FloatingTimerView(timerManager: timerManager, startAction: startAction)
             )
             panel?.contentView = hostingView
 
