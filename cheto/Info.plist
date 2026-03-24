@@ -13,6 +13,6 @@
     <key>LSUIElement</key>
     <true/>
     <key>NSCalendarsFullAccessUsageDescription</key>
-    <string>ポモドーロ開始前に近い予定をチェックするために使用します</string>
+    <string>Used to check for upcoming events before starting a pomodoro session.</string>
 </dict>
 </plist>

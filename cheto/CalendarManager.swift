@@ -7,12 +7,12 @@ class CalendarManager {
 
     private let selectedCalendarIDsKey = "selectedCalendarIDs"
 
-    /// アクセスが許可されているか
+    /// Whether calendar access is granted
     var hasAccess: Bool {
         EKEventStore.authorizationStatus(for: .event) == .fullAccess
     }
 
-    /// アクセス権限をリクエスト（初回は macOS がシステムダイアログを表示）
+    /// Request calendar access (macOS shows a system dialog on first call)
     func requestAccess() async -> Bool {
         do {
             return try await store.requestFullAccessToEvents()
@@ -21,13 +21,13 @@ class CalendarManager {
         }
     }
 
-    /// 利用可能なカレンダー一覧（イベントタイプのみ）
+    /// Available calendars (event type only)
     var availableCalendars: [EKCalendar] {
         guard hasAccess else { return [] }
         return store.calendars(for: .event)
     }
 
-    /// チェック対象として選択されたカレンダーID
+    /// Calendar IDs selected for pre-pomodoro check
     var selectedCalendarIDs: Set<String> {
         get {
             let array = UserDefaults.standard.stringArray(forKey: selectedCalendarIDsKey) ?? []
@@ -38,8 +38,8 @@ class CalendarManager {
         }
     }
 
-    /// 指定秒数以内に開始する最も近いイベントを返す（終日イベント除外）
-    /// hasAccess == false または selectedCalendarIDs が空の場合は nil を返す
+    /// Return the nearest event starting within the given seconds (excludes all-day events).
+    /// Returns nil if access is not granted or no calendars are selected.
     func nextEvent(within seconds: Int) -> EKEvent? {
         guard hasAccess else { return nil }
 
@@ -50,13 +50,13 @@ class CalendarManager {
         guard !calendars.isEmpty else { return nil }
 
         let now = Date()
-        // EventKit の predicateForEvents は半開区間 [start, end) のため、
-        // ちょうど seconds 秒後の予定を含めるために +1 秒する
+        // predicateForEvents uses a half-open interval [start, end),
+        // so add 1 second to include events starting exactly at the boundary
         let end = now.addingTimeInterval(TimeInterval(seconds + 1))
         let predicate = store.predicateForEvents(withStart: now, end: end, calendars: calendars)
         let events = store.events(matching: predicate)
 
-        // 終日イベントを除外し、開始時刻が最も近いものを返す
+        // Exclude all-day events and return the one with the earliest start time
         return events
             .filter { !$0.isAllDay }
             .sorted { $0.startDate < $1.startDate }

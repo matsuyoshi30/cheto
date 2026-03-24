@@ -161,15 +161,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let minutesUntil = max(1, Int(ceil(event.startDate.timeIntervalSinceNow / 60)))
-        let title = event.title.map { $0.count > 40 ? String($0.prefix(40)) + "…" : $0 } ?? "予定"
+        let title = event.title.map { $0.count > 40 ? String($0.prefix(40)) + "…" : $0 } ?? "Event"
 
         NSApp.activate()
 
         let alert = NSAlert()
-        alert.messageText = "予定が近づいています"
-        alert.informativeText = "\(minutesUntil)分後に \"\(title)\" があります。ポモドーロを開始しますか？"
-        alert.addButton(withTitle: "開始")
-        alert.addButton(withTitle: "キャンセル")
+        alert.messageText = "Upcoming Event"
+        alert.informativeText = "\"\(title)\" starts in \(minutesUntil) min. Start pomodoro anyway?"
+        alert.addButton(withTitle: "Start")
+        alert.addButton(withTitle: "Cancel")
         alert.alertStyle = .warning
 
         if alert.runModal() == .alertFirstButtonReturn {
