@@ -18,13 +18,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var notificationManager: NotificationManager!
     private var panelController: FloatingPanelController!
     private var cancellables = Set<AnyCancellable>()
+    private var calendarManager: CalendarManager!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         timerManager = TimerManager()
         notificationManager = NotificationManager()
+        calendarManager = CalendarManager()
         panelController = FloatingPanelController()
 
-        panelController.setup(timerManager: timerManager)
+        panelController.setup(timerManager: timerManager, startAction: { [weak self] in
+            self?.startWithCalendarCheck()
+        })
         timerManager.onPhaseComplete = { [weak self] phase in
             self?.notificationManager.handlePhaseComplete(phase)
         }
@@ -84,6 +88,43 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(floatingItem)
 
         menu.addItem(.separator())
+
+        // Calendar settings
+        if calendarManager.hasAccess {
+            let settingsItem = NSMenuItem(title: "Settings", action: nil, keyEquivalent: "")
+            let settingsMenu = NSMenu()
+
+            let calendarsItem = NSMenuItem(title: "Calendars", action: nil, keyEquivalent: "")
+            let calendarsMenu = NSMenu()
+
+            let selectedIDs = calendarManager.selectedCalendarIDs
+            for calendar in calendarManager.availableCalendars {
+                let item = NSMenuItem(
+                    title: calendar.title,
+                    action: #selector(toggleCalendar(_:)),
+                    keyEquivalent: ""
+                )
+                item.target = self
+                item.representedObject = calendar.calendarIdentifier
+                item.state = selectedIDs.contains(calendar.calendarIdentifier) ? .on : .off
+                calendarsMenu.addItem(item)
+            }
+
+            calendarsItem.submenu = calendarsMenu
+            settingsMenu.addItem(calendarsItem)
+            settingsItem.submenu = settingsMenu
+            menu.addItem(settingsItem)
+        } else {
+            let enableItem = NSMenuItem(
+                title: "Enable Calendar Check…",
+                action: #selector(requestCalendarAccess),
+                keyEquivalent: ""
+            )
+            enableItem.target = self
+            menu.addItem(enableItem)
+        }
+
+        menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q"))
 
         // Set target for all actionable items
@@ -102,11 +143,57 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc private func startTimer() { timerManager.start() }
+    @objc private func startTimer() { startWithCalendarCheck() }
     @objc private func pauseTimer() { timerManager.pause() }
     @objc private func resumeTimer() { timerManager.resume() }
     @objc private func skipTimer() { timerManager.skip() }
     @objc private func resetTimer() { timerManager.reset() }
     @objc private func toggleFloating() { panelController.toggle() }
+    private func startWithCalendarCheck() {
+        guard calendarManager.hasAccess, !calendarManager.selectedCalendarIDs.isEmpty else {
+            timerManager.start()
+            return
+        }
+
+        guard let event = calendarManager.nextEvent(within: TimerManager.defaultWorkDuration) else {
+            timerManager.start()
+            return
+        }
+
+        let minutesUntil = max(1, Int(ceil(event.startDate.timeIntervalSinceNow / 60)))
+        let title = event.title.map { $0.count > 40 ? String($0.prefix(40)) + "…" : $0 } ?? "予定"
+
+        NSApp.activate()
+
+        let alert = NSAlert()
+        alert.messageText = "予定が近づいています"
+        alert.informativeText = "\(minutesUntil)分後に \"\(title)\" があります。ポモドーロを開始しますか？"
+        alert.addButton(withTitle: "開始")
+        alert.addButton(withTitle: "キャンセル")
+        alert.alertStyle = .warning
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            timerManager.start()
+        }
+    }
+
+    @objc private func toggleCalendar(_ sender: NSMenuItem) {
+        guard let calendarID = sender.representedObject as? String else { return }
+        var ids = calendarManager.selectedCalendarIDs
+        if ids.contains(calendarID) {
+            ids.remove(calendarID)
+        } else {
+            ids.insert(calendarID)
+        }
+        calendarManager.selectedCalendarIDs = ids
+    }
+
+    @objc private func requestCalendarAccess() {
+        Task {
+            _ = await calendarManager.requestAccess()
+            buildMenu()
+        }
+    }
+
     @objc private func quitApp() { NSApplication.shared.terminate(nil) }
 }
