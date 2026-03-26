@@ -9,8 +9,13 @@ enum TimerPhase {
 
 @MainActor
 class TimerManager: ObservableObject {
+    #if DEBUG
+    static let defaultWorkDuration = 10   // 10 seconds for debugging
+    static let defaultBreakDuration = 5   // 5 seconds for debugging
+    #else
     static let defaultWorkDuration = 1500  // 25 minutes
     static let defaultBreakDuration = 300  // 5 minutes
+    #endif
 
     @Published var currentPhase: TimerPhase = .idle
     @Published var isRunning = false
