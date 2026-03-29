@@ -7,9 +7,9 @@ BUILD_DIR = .build/debug
 build:
 	swift build --disable-sandbox
 
-# Debug build with DEBUG flag (short timer durations etc.)
+# Debug build with short timer durations
 debug:
-	swift build --disable-sandbox -Xswiftc -DDEBUG
+	swift build --disable-sandbox -Xswiftc -DSHORT_TIMER
 
 # Create .app bundle and run
 run: build
@@ -30,5 +30,5 @@ _bundle_and_open:
 	open $(APP_BUNDLE)
 
 clean:
-	swift package clean
+	rm -rf .build
 	rm -rf $(APP_BUNDLE)
